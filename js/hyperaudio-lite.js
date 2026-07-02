@@ -507,7 +507,9 @@ class HyperaudioLite {
         navigator.clipboard.writeText(cbText);
 
         const dialog = document.getElementById("clipboard-dialog");
-        document.getElementById("clipboard-text").innerHTML = cbText;
+        // textContent: cbText contains arbitrary selected text — don't let it
+        // parse as HTML.
+        document.getElementById("clipboard-text").textContent = cbText;
         dialog.showModal();
 
         e.preventDefault();
@@ -637,14 +639,6 @@ class HyperaudioLite {
     if (selection.rangeCount === 0) return null;
 
     const range = selection.getRangeAt(0);
-    
-    // Helper function to get the closest span
-    function getClosestSpan(node) {
-      while (node && node.nodeType !== Node.ELEMENT_NODE) {
-        node = node.parentNode;
-      }
-      return node.closest('[data-m]');
-    }
 
     // Get all relevant spans
     const allSpans = Array.from(this.transcript.querySelectorAll('[data-m]'));
@@ -700,8 +694,7 @@ class HyperaudioLite {
     if (range === null) {
       return null;
     }
-    console.log(range);
-    return (this.transcript.id + '=' +range);
+    return (this.transcript.id + '=' + range);
   }
 
   // Set the playhead position in the media player based on the transcript
