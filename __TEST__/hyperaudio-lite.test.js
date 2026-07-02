@@ -635,19 +635,60 @@ test("unknown data-player-type warns instead of throwing (#253)", () => {
 
   // Used to blow up with "hyperaudioPlayerOptions[playerType] is not a
   // constructor" — now it warns and names the valid types.
-  expect(
-    () =>
-      new HyperaudioLite({
-        transcript: "hypertranscript",
-        player: "bogusplayer",
-      })
-  ).not.toThrow();
+  let inst;
+  expect(() => {
+    inst = new HyperaudioLite({
+      transcript: "hypertranscript",
+      player: "bogusplayer",
+    });
+  }).not.toThrow();
   expect(
     warnSpy.mock.calls.some((c) => /unknown data-player-type "bogus"/.test(c[0]))
   ).toBe(true);
 
+  // Clicks and keys on the shared transcript must not crash the player-less
+  // instance either.
+  expect(() =>
+    simulateClick(document.getElementsByTagName("span")[1], "click")
+  ).not.toThrow();
+
+  inst.destroy(); // don't leave its listeners on the shared transcript
   warnSpy.mockRestore();
   document.getElementById("bogusplayer").remove();
+});
+
+test("Enter on a focused word sets the playhead like a click (#259)", () => {
+  const inst = new HyperaudioLite({
+    transcript: "hypertranscript",
+    player: "hyperplayer",
+  });
+  const word = document.getElementsByTagName("span")[2]; // data-m="3240"
+  const player = document.getElementById("hyperplayer");
+  player.currentTime = 0;
+
+  word.dispatchEvent(
+    new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true })
+  );
+
+  expect(player.currentTime).toBe(3.24);
+});
+
+test("smoothScrollTo jumps directly under prefers-reduced-motion (#259)", () => {
+  const inst = new HyperaudioLite({
+    transcript: "hypertranscript",
+    player: "hyperplayer",
+  });
+  // jsdom has no matchMedia — install one reporting reduced motion.
+  window.matchMedia = jest.fn(() => ({ matches: true }));
+
+  const container = { scrollTop: 0 };
+  inst.smoothScrollTo(container, 500, 800);
+
+  expect(container.scrollTop).toBe(500); // immediate, no animation frames
+  expect(inst.scrollAnimationId).toBeNull();
+  expect(window.matchMedia).toHaveBeenCalledWith("(prefers-reduced-motion: reduce)");
+
+  delete window.matchMedia;
 });
 
 test("registerPlayer() adds a custom player type (#253)", () => {

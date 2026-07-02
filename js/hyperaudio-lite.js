@@ -587,6 +587,21 @@ class HyperaudioLite {
     const opts = { signal: this.listenerController.signal };
     this.transcript.addEventListener(playHeadEvent, this.setPlayHead.bind(this), opts);
     this.transcript.addEventListener(playHeadEvent, this.checkPlayHead.bind(this), opts);
+
+    // Keyboard support (#259): Enter or Space on a focused word behaves like
+    // a click. Words are spans, so they aren't focusable by default — give
+    // them tabindex="0" in your transcript markup to enable this.
+    this.transcript.addEventListener('keydown', e => {
+      if (e.key !== 'Enter' && e.key !== ' ') {
+        return;
+      }
+      if (!e.target.dataset || e.target.dataset.m === undefined) {
+        return;
+      }
+      e.preventDefault(); // stop Space scrolling the page
+      this.setPlayHead(e);
+      this.checkPlayHead(e);
+    }, opts);
   }
 
   // Setup initial playhead position based on URL hash
@@ -699,6 +714,12 @@ class HyperaudioLite {
 
   // Set the playhead position in the media player based on the transcript
   setPlayHead(e) {
+    // The player factory returns null for a missing/unknown player type —
+    // the warning has already fired; don't crash on every click (#253).
+    if (!this.myPlayer) {
+      return;
+    }
+
     const target = e.target || e.srcElement;
     this.highlightedText = false;
     this.clearActiveClasses();
@@ -782,6 +803,10 @@ class HyperaudioLite {
 
   // Check the playhead position and update the transcript
   checkPlayHead() {
+    if (!this.myPlayer) {
+      return;
+    }
+
     this.clearTimer();
 
     (async () => {
@@ -821,6 +846,14 @@ class HyperaudioLite {
   smoothScrollTo(container, targetTop, duration) {
     if (this.scrollAnimationId) {
       cancelAnimationFrame(this.scrollAnimationId);
+    }
+    // Respect prefers-reduced-motion: jump straight to the target instead of
+    // animating (#259).
+    if (typeof window.matchMedia === 'function' &&
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      container.scrollTop = targetTop;
+      this.scrollAnimationId = null;
+      return;
     }
     const startTop = container.scrollTop;
     const distance = targetTop - startTop;
