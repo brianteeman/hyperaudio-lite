@@ -787,7 +787,9 @@ class HyperaudioLite {
   // Check the status of the playhead and update the transcript
   checkStatus() {
     if (!this.myPlayer.paused) {
-      if (this.end && parseInt(this.end) < parseInt(this.currentTime)) {
+      // parseFloat: end and currentTime are fractional seconds — truncating
+      // them let playback overshoot a shared selection by up to 1s (#249).
+      if (this.end && parseFloat(this.end) < parseFloat(this.currentTime)) {
         this.myPlayer.pause();
         this.end = null;
       } else {

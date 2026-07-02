@@ -480,6 +480,20 @@ test("checkStatus schedules next check", () => {
   jest.useRealTimers();
 });
 
+test("selection playback stops at fractional end times (regression for #249)", () => {
+  // end/currentTime are fractional seconds. parseInt truncated both, so with
+  // end=5.25 and currentTime=5.5 the comparison saw 5 < 5 and kept playing —
+  // overshooting a shared selection by up to a second.
+  ht.myPlayer = { paused: false, pause: jest.fn() };
+  ht.end = "5.25";
+  ht.currentTime = 5.5;
+
+  ht.checkStatus();
+
+  expect(ht.myPlayer.pause).toHaveBeenCalled();
+  expect(ht.end).toBeNull();
+});
+
 test("popover copy button copies once per click (regression for #248)", () => {
   // Popover/dialog markup is provided by the host page.
   document.body.insertAdjacentHTML(
