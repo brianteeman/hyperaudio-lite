@@ -1,0 +1,26 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      # The ESM build is generated from the CJS source — fail if a PR edited
+      # one without regenerating the other (npm run build).
+      - run: npm run build
+      - run: git diff --exit-code js/hyperaudio-lite.mjs
+
+      - run: npx jest
