@@ -351,11 +351,23 @@ const hyperaudioPlayerOptions = {
 
 // Factory function to create player instances
 function hyperaudioPlayer(playerType, instance) {
-  if (playerType) {
-    return new hyperaudioPlayerOptions[playerType](instance);
-  } else {
+  if (!playerType) {
     console.warn("HYPERAUDIO LITE WARNING: data-player-type attribute should be set on player if not native, e.g., SoundCloud, YouTube, Vimeo, VideoJS");
+    return null;
   }
+
+  const PlayerClass = hyperaudioPlayerOptions[playerType];
+  if (!PlayerClass) {
+    // A typo used to surface as a raw TypeError ("not a constructor") with
+    // no hint of the cause (#253).
+    console.warn(
+      `HYPERAUDIO LITE WARNING: unknown data-player-type "${playerType}" — ` +
+      `valid types are: ${Object.keys(hyperaudioPlayerOptions).join(', ')}`
+    );
+    return null;
+  }
+
+  return new PlayerClass(instance);
 }
 
 // Main class for HyperaudioLite functionality
@@ -402,6 +414,14 @@ class HyperaudioLite {
     this.checkPlayHead = this.checkPlayHead.bind(this);
     this.clearTimer = this.clearTimer.bind(this);
     this.handleSeeked = this.handleSeeked.bind(this);
+  }
+
+  // Register a custom player class for a data-player-type value (#253).
+  // The class should extend BasePlayer — or at minimum accept the
+  // HyperaudioLite instance in its constructor and implement
+  // getTime/setTime/play/pause.
+  static registerPlayer(type, playerClass) {
+    hyperaudioPlayerOptions[type] = playerClass;
   }
 
   // Throttled deprecation warning — fires at most once per page load
@@ -1010,5 +1030,5 @@ class HyperaudioLite {
 
 // Export for testing or module usage
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { HyperaudioLite, hyperaudioPlayerOptions };
+  module.exports = { HyperaudioLite, hyperaudioPlayerOptions, BasePlayer };
 }

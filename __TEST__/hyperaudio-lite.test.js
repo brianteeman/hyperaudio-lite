@@ -597,6 +597,60 @@ test("destroy() detaches listeners and stops the polling loop (#252)", () => {
   expect(player.currentTime).toBe(0); // click listener removed — no seek
 });
 
+test("unknown data-player-type warns instead of throwing (#253)", () => {
+  const warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
+  document.body.insertAdjacentHTML(
+    "beforeend",
+    '<div id="bogusplayer" data-player-type="bogus"></div>'
+  );
+
+  // Used to blow up with "hyperaudioPlayerOptions[playerType] is not a
+  // constructor" — now it warns and names the valid types.
+  expect(
+    () =>
+      new HyperaudioLite({
+        transcript: "hypertranscript",
+        player: "bogusplayer",
+      })
+  ).not.toThrow();
+  expect(
+    warnSpy.mock.calls.some((c) => /unknown data-player-type "bogus"/.test(c[0]))
+  ).toBe(true);
+
+  warnSpy.mockRestore();
+  document.getElementById("bogusplayer").remove();
+});
+
+test("registerPlayer() adds a custom player type (#253)", () => {
+  class FakePlayer {
+    constructor(instance) {
+      this.instance = instance;
+      this.paused = true;
+    }
+    getTime() {
+      return Promise.resolve(0);
+    }
+    setTime() {}
+    play() {}
+    pause() {}
+  }
+
+  HyperaudioLite.registerPlayer("fake", FakePlayer);
+  document.body.insertAdjacentHTML(
+    "beforeend",
+    '<div id="fakeplayer" data-player-type="fake"></div>'
+  );
+
+  const inst = new HyperaudioLite({
+    transcript: "hypertranscript",
+    player: "fakeplayer",
+  });
+  expect(inst.myPlayer).toBeInstanceOf(FakePlayer);
+
+  document.getElementById("fakeplayer").remove();
+  delete hyperaudioPlayerOptions.fake;
+});
+
 
 
 
