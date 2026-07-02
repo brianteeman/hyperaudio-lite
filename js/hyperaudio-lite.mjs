@@ -95,6 +95,18 @@ class SoundCloudPlayer extends BasePlayer {
   setTime(seconds) {
     this.player.seekTo(seconds * 1000);
   }
+
+  // Play the SoundCloud track
+  play() {
+    this.player.play();
+    this.paused = false;
+  }
+
+  // Pause the SoundCloud track
+  pause() {
+    this.player.pause();
+    this.paused = true;
+  }
 }
 
 // Class for VideoJS player
@@ -112,6 +124,18 @@ class VideoJSPlayer extends BasePlayer {
   // Set the current time of the VideoJS player
   setTime(seconds) {
     this.player.currentTime(seconds);
+  }
+
+  // Play the VideoJS player
+  play() {
+    this.player.play();
+    this.paused = false;
+  }
+
+  // Pause the VideoJS player
+  pause() {
+    this.player.pause();
+    this.paused = true;
   }
 }
 
@@ -138,6 +162,18 @@ class VimeoPlayer extends BasePlayer {
   // Set the current time of the Vimeo player
   setTime(seconds) {
     this.player.setCurrentTime(seconds);
+  }
+
+  // Play the Vimeo video
+  play() {
+    this.player.play();
+    this.paused = false;
+  }
+
+  // Pause the Vimeo video
+  pause() {
+    this.player.pause();
+    this.paused = true;
   }
 }
 
@@ -881,8 +917,8 @@ class HyperaudioLite {
 
 // Export for testing or module usage
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { HyperaudioLite };
+  module.exports = { HyperaudioLite, hyperaudioPlayerOptions };
 }
 
 // ESM export
-export { HyperaudioLite };
+export { HyperaudioLite, hyperaudioPlayerOptions };

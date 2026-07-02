@@ -5,7 +5,7 @@
  */
 
 const { test } = require("@jest/globals");
-const { HyperaudioLite } = require("../js/hyperaudio-lite");
+const { HyperaudioLite, hyperaudioPlayerOptions } = require("../js/hyperaudio-lite");
 //import * as HyperaudioLite from '../js/hyperaudio-lite';
 
 let wordArr = [];
@@ -412,6 +412,30 @@ test("pausePlayHead clears timer and sets paused to true", () => {
   expect(ht.myPlayer.paused).toBe(true);
   expect(ht.timer).toBeFalsy();
   jest.useRealTimers();
+});
+
+test("every player class implements play() and pause() (regression for #245)", () => {
+  // BasePlayer.play/pause throw "must be implemented by subclasses" since 2.5.0.
+  // SoundCloud, Video.js and Vimeo relied on the old HTML5 defaults and were
+  // left without implementations, so click-to-play threw on those players.
+  // Call each class's play/pause against a stub of its underlying player API
+  // to prove the abstract methods are overridden everywhere.
+  const stubPlayer = {
+    play: () => {},        // native, SoundCloud, Video.js, Vimeo, Spotify
+    pause: () => {},       // native, SoundCloud, Video.js, Vimeo
+    playVideo: () => {},   // YouTube
+    pauseVideo: () => {},  // YouTube
+    togglePlay: () => {},  // Spotify
+  };
+
+  Object.entries(hyperaudioPlayerOptions).forEach(([type, PlayerClass]) => {
+    const instance = Object.create(PlayerClass.prototype);
+    instance.player = stubPlayer;
+    instance.isReady = true; // YouTube gates play/pause on readiness
+
+    expect(() => instance.play()).not.toThrow();
+    expect(() => instance.pause()).not.toThrow();
+  });
 });
 
 // This test requires jest.useFakeTimers() to work properly
