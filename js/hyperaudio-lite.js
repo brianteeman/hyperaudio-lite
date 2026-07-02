@@ -587,6 +587,10 @@ class HyperaudioLite {
         }
         p = p.parentNode;
       }
+      // Reset to a clean baseline — stale read/active classes from a previous
+      // instance on the same DOM would survive the delta updates in
+      // updateTranscriptVisualState (#251).
+      word.classList.remove('read', 'active');
       word.classList.add('unread');
       return { n: word, m, p };
     });
@@ -811,19 +815,13 @@ class HyperaudioLite {
         }
 
         if (this.minimizedMode) {
-          const elements = this.transcript.querySelectorAll('[data-m]');
-          let currentWord = '';
-          let lastWordIndex = this.wordIndex;
+          // The active word index is already known from the visual-state
+          // update — no need to rescan every span (#251).
+          const lastWordIndex = this.wordIndex;
+          this.wordIndex = index - 1;
 
-          for (let i = 0; i < elements.length; i++) {
-            if (elements[i].classList.contains('active')) {
-              currentWord = elements[i].innerHTML;
-              this.wordIndex = i;
-            }
-          }
-
-          if (this.wordIndex !== lastWordIndex) {
-            document.title = currentWord;
+          if (this.wordIndex !== lastWordIndex && this.wordIndex >= 0) {
+            document.title = this.wordArr[this.wordIndex].n.innerHTML;
           }
         }
 
@@ -904,31 +902,77 @@ class HyperaudioLite {
       }
     }
 
-    this.wordArr.forEach((word, i) => {
-      const classList = word.n.classList;
-      const parentClassList = word.n.parentNode.classList;
+    // Delta update (#251): only touch the words whose read/unread state
+    // changed since the last call, instead of sweeping every word on every
+    // tick — O(words moved past) rather than O(transcript length).
+    const wordCount = this.wordArr.length;
+    let prevIndex = this.prevWordIndex ?? 0;
+    if (prevIndex > wordCount) {
+      prevIndex = wordCount;
+    }
 
-      if (i < index) {
+    // Self-heal: if outside code (or another instance sharing this DOM) has
+    // rewritten the word classes, the read/unread boundary we last applied
+    // won't match the DOM any more — resync every word this one time.
+    const boundaryIntact =
+      (prevIndex === 0 || this.wordArr[prevIndex - 1].n.classList.contains('read')) &&
+      (prevIndex === wordCount || this.wordArr[prevIndex].n.classList.contains('unread'));
+
+    if (!boundaryIntact) {
+      this.wordArr.forEach((word, i) => {
+        const classList = word.n.classList;
+        if (i < index) {
+          classList.add('read');
+          classList.remove('unread', 'active');
+        } else {
+          classList.add('unread');
+          classList.remove('read', 'active');
+        }
+      });
+    } else {
+      for (let i = prevIndex; i < index; i++) {
+        // moved forward — words now behind the playhead become read
+        const classList = this.wordArr[i].n.classList;
         classList.add('read');
         classList.remove('unread', 'active');
-        parentClassList.remove('active');
-      } else {
+      }
+
+      for (let i = index; i < prevIndex; i++) {
+        // moved backward — words now ahead of the playhead become unread
+        const classList = this.wordArr[i].n.classList;
         classList.add('unread');
         classList.remove('read', 'active');
       }
-    });
-
-    this.parentElements = this.transcript.getElementsByTagName(this.parentTag);
-    Array.from(this.parentElements).forEach(el => el.classList.remove('active'));
-
-    if (index > 0) {
-      if (!this.myPlayer.paused || forceActiveWord) {
-        this.wordArr[index - 1].n.classList.add('active');
-      }
-      this.wordArr[index - 1].n.parentNode.classList.add('active');
     }
-  
-    const currentParentElementIndex = Array.from(this.parentElements).findIndex(el => el.classList.contains('active'));
+
+    this.prevWordIndex = index;
+
+    // Track the active word/paragraph elements directly rather than clearing
+    // 'active' from every parent element each tick. parentElements is a live
+    // HTMLCollection set up once in setupTranscriptWords.
+    const activeWord = index > 0 ? this.wordArr[index - 1].n : null;
+    const activeParent = activeWord ? activeWord.parentNode : null;
+
+    if (this.activeWordElement && this.activeWordElement !== activeWord) {
+      this.activeWordElement.classList.remove('active');
+    }
+    if (this.activeParentElement && this.activeParentElement !== activeParent) {
+      this.activeParentElement.classList.remove('active');
+    }
+
+    if (activeWord) {
+      if (!this.myPlayer.paused || forceActiveWord) {
+        activeWord.classList.add('active');
+      }
+      activeParent.classList.add('active');
+    }
+
+    this.activeWordElement = activeWord;
+    this.activeParentElement = activeParent;
+
+    const currentParentElementIndex = activeParent
+      ? Array.prototype.indexOf.call(this.parentElements, activeParent)
+      : -1;
 
     return {
       currentWordIndex: index,

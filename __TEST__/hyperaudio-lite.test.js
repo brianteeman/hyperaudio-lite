@@ -385,6 +385,24 @@ test("updateTranscriptVisualState clears stale .active on rewind", () => {
   expect(staleActives).toHaveLength(0);
 });
 
+test("updateTranscriptVisualState self-heals after external class rewrites (#251)", () => {
+  // The delta optimisation only touches words whose state changed since the
+  // last call. If outside code (or another instance sharing the DOM) rewrites
+  // the classes, the boundary check must detect it and resync everything.
+  ht.myPlayer = { paused: false };
+  ht.updateTranscriptVisualState(5); // establish cached delta state
+
+  const spans = document.querySelectorAll("span[data-m]");
+  spans.forEach(s => (s.className = "")); // external rewrite
+
+  ht.updateTranscriptVisualState(5); // same index — a pure delta would no-op
+
+  expect(spans[0].classList.contains("read")).toBe(true);
+  expect(spans[4].classList.contains("read")).toBe(true);
+  expect(spans[4].classList.contains("active")).toBe(true);
+  expect(spans[5].classList.contains("unread")).toBe(true);
+});
+
 test("setPlayHead updates currentTime and plays if playOnClick is true", () => {
   ht.playOnClick = true;
   ht.myPlayer = { setTime: jest.fn(), play: jest.fn(), paused: true };
