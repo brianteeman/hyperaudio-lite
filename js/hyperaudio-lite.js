@@ -410,11 +410,12 @@ class HyperaudioLite {
     this.setupPlayer(mediaElementId);
     this.setupTranscriptWords();
     this.setupEventListeners(doubleClick, playOnClick);
-    this.setupInitialPlayHead();
     this.setupAutoScroll(autoscroll);
     this.minimizedMode = minimizedMode;
-    this.autoscroll = autoscroll;
     this.webMonetization = webMonetization;
+    // Must run AFTER setupAutoScroll: a share-link hash scrolls the selection
+    // into view only when the autoscroll setting is already in place (#246).
+    this.setupInitialPlayHead();
   }
 
   // Setup hash for transcript selection
@@ -518,10 +519,10 @@ class HyperaudioLite {
 
   // Setup event listeners for interactions
   setupEventListeners(doubleClick, playOnClick) {
-    this.minimizedMode = false;
-    this.autoscroll = false;
+    // NOTE: minimizedMode / autoscroll / webMonetization are set by init() —
+    // resetting them here clobbered the real option values for any setup step
+    // that ran in between (#246).
     this.doubleClick = doubleClick;
-    this.webMonetization = false;
     this.playOnClick = playOnClick;
     this.highlightedText = false;
     this.start = null;

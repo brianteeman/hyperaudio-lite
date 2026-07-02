@@ -414,6 +414,28 @@ test("pausePlayHead clears timer and sets paused to true", () => {
   jest.useRealTimers();
 });
 
+test("share-link hash triggers initial autoscroll (regression for #246)", () => {
+  // init() used to run setupInitialPlayHead() while this.autoscroll was still
+  // false (setupEventListeners reset it; the real value was applied later by
+  // setupAutoScroll), so opening a share link never scrolled the selection
+  // into view.
+  const scrollSpy = jest
+    .spyOn(HyperaudioLite.prototype, "scrollToParagraph")
+    .mockImplementation(() => {});
+  window.location.hash = "#hypertranscript=6.58,8.63";
+
+  new HyperaudioLite({
+    transcript: "hypertranscript",
+    player: "hyperplayer",
+    autoScroll: true,
+  });
+
+  expect(scrollSpy).toHaveBeenCalled();
+
+  scrollSpy.mockRestore();
+  window.location.hash = "";
+});
+
 test("every player class implements play() and pause() (regression for #245)", () => {
   // BasePlayer.play/pause throw "must be implemented by subclasses" since 2.5.0.
   // SoundCloud, Video.js and Vimeo relied on the old HTML5 defaults and were
