@@ -143,8 +143,9 @@ class VideoJSPlayer extends BasePlayer {
 class VimeoPlayer extends BasePlayer {
   // Initialize the Vimeo player
   initPlayer(instance) {
-    const iframe = document.querySelector('iframe');
-    return new Vimeo.Player(iframe);
+    // Use the instance's own iframe — document.querySelector('iframe') bound
+    // to the first iframe anywhere on the page (#247).
+    return new Vimeo.Player(instance.player);
   }
 
   // Attach event listeners specific to Vimeo player
