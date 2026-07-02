@@ -472,12 +472,73 @@ test("checkStatus schedules next check", () => {
   ht.checkPlayHead = jest.fn();
 
   ht.checkStatus();
-  
+
   jest.runAllTimers();
-  
+
   expect(ht.checkPlayHead).toHaveBeenCalled();
-  
+
   jest.useRealTimers();
+});
+
+test("popover copy button copies once per click (regression for #248)", () => {
+  // Popover/dialog markup is provided by the host page.
+  document.body.insertAdjacentHTML(
+    "beforeend",
+    '<div id="popover" style="display:none"><button id="popover-btn">Copy</button></div>' +
+      '<dialog id="clipboard-dialog"><p id="clipboard-text"></p><button id="clipboard-confirm">OK</button></dialog>'
+  );
+  // The library guards on a global `popover` binding (browsers create one for
+  // elements with ids); make that explicit for jsdom.
+  global.popover = document.getElementById("popover");
+
+  // jsdom implements neither the async clipboard API nor <dialog> methods.
+  const writeText = jest.fn();
+  Object.defineProperty(navigator, "clipboard", {
+    value: { writeText },
+    configurable: true,
+  });
+  const dialog = document.getElementById("clipboard-dialog");
+  dialog.showModal = jest.fn();
+  dialog.close = jest.fn();
+
+  // jsdom's Range doesn't implement getBoundingClientRect either.
+  const hadRangeRect = "getBoundingClientRect" in Range.prototype;
+  if (!hadRangeRect) {
+    Range.prototype.getBoundingClientRect = () => ({
+      left: 0, right: 0, top: 0, bottom: 0, width: 0, height: 0,
+    });
+  }
+
+  const inst = new HyperaudioLite({
+    transcript: "hypertranscript",
+    player: "hyperplayer",
+  });
+
+  // Make several selections — each fires a mouseup on the transcript. The bug
+  // was that every mouseup stacked another click listener on the copy button.
+  const textNode = document.getElementById("p1").firstChild.lastChild;
+  for (let i = 0; i < 3; i++) {
+    document.getSelection().setBaseAndExtent(textNode, 0, textNode, 3);
+    inst.transcript.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
+  }
+
+  document.getElementById("popover-btn").click();
+  expect(writeText).toHaveBeenCalledTimes(1);
+  expect(dialog.showModal).toHaveBeenCalledTimes(1);
+
+  // Confirm button closes the dialog (attached once, still works).
+  document.getElementById("clipboard-confirm").click();
+  expect(dialog.close).toHaveBeenCalledTimes(1);
+
+  // Clean up shared test DOM/state.
+  document.getSelection().removeAllRanges();
+  document.getElementById("popover").remove();
+  dialog.remove();
+  delete global.popover;
+  if (!hadRangeRect) {
+    delete Range.prototype.getBoundingClientRect;
+  }
+  window.location.hash = "";
 });
 
 

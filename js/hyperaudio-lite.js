@@ -434,45 +434,53 @@ class HyperaudioLite {
   // Setup the popover for text selection
   setupPopover() {
     if (typeof popover !== 'undefined') {
+      // Current selection, shared with the one-time button listener below.
+      this.selectionText = '';
+
       this.transcript.addEventListener('mouseup', () => {
         const selection = window.getSelection();
         const popover = document.getElementById('popover');
-        let selectionText;
-  
+
         if (selection.toString().length > 0) {
-          selectionText = selection.toString().replaceAll("'", "`");
+          this.selectionText = selection.toString().replaceAll("'", "`");
           const range = selection.getRangeAt(0);
           const rect = range.getBoundingClientRect();
-  
+
           popover.style.left = `${rect.left + window.scrollX}px`;
           popover.style.top = `${rect.bottom + window.scrollY}px`;
           popover.style.display = 'block';
-  
+
           const mediaFragment = this.getSelectionMediaFragment();
-  
+
           if (mediaFragment) {
             document.location.hash = mediaFragment;
           }
         } else {
           popover.style.display = 'none';
         }
-  
-        const popoverBtn = document.getElementById('popover-btn');
-        popoverBtn.addEventListener('click', (e) => {
-          popover.style.display = 'none';
-          let cbText = `${selectionText} ${document.location}`;
-          navigator.clipboard.writeText(cbText);
-  
-          const dialog = document.getElementById("clipboard-dialog");
-          document.getElementById("clipboard-text").innerHTML = cbText;
-          dialog.showModal();
-  
-          const confirmButton = document.getElementById("clipboard-confirm");
-          confirmButton.addEventListener("click", () => dialog.close());
-  
-          e.preventDefault();
-          return false;
-        });
+      });
+
+      // Attach the copy/confirm listeners ONCE. Adding them inside the
+      // mouseup handler stacked a new listener per selection, so a single
+      // click copied to the clipboard N times and reopened the dialog N
+      // times (#248).
+      const popoverBtn = document.getElementById('popover-btn');
+      popoverBtn.addEventListener('click', (e) => {
+        document.getElementById('popover').style.display = 'none';
+        let cbText = `${this.selectionText} ${document.location}`;
+        navigator.clipboard.writeText(cbText);
+
+        const dialog = document.getElementById("clipboard-dialog");
+        document.getElementById("clipboard-text").innerHTML = cbText;
+        dialog.showModal();
+
+        e.preventDefault();
+        return false;
+      });
+
+      const confirmButton = document.getElementById("clipboard-confirm");
+      confirmButton.addEventListener("click", () => {
+        document.getElementById("clipboard-dialog").close();
       });
     }
   }
