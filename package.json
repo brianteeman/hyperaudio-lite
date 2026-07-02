@@ -1,21 +1,48 @@
 {
-  "name": "Hyperaudio-Lite",
+  "name": "hyperaudio-lite",
   "version": "2.5.1",
+  "description": "A lightweight transcript player for making audio and video interactive — no frameworks, no build step",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hyperaudio/hyperaudio-lite.git"
+  },
+  "homepage": "https://github.com/hyperaudio/hyperaudio-lite#readme",
+  "bugs": {
+    "url": "https://github.com/hyperaudio/hyperaudio-lite/issues"
+  },
+  "keywords": [
+    "transcript",
+    "audio",
+    "video",
+    "captions",
+    "subtitles",
+    "hypermedia",
+    "player"
+  ],
   "main": "./js/hyperaudio-lite.js",
   "module": "./js/hyperaudio-lite.mjs",
+  "types": "./js/hyperaudio-lite.d.ts",
   "exports": {
     ".": {
+      "types": "./js/hyperaudio-lite.d.ts",
       "import": "./js/hyperaudio-lite.mjs",
       "require": "./js/hyperaudio-lite.js",
       "default": "./js/hyperaudio-lite.js"
     }
   },
+  "files": [
+    "js/hyperaudio-lite.js",
+    "js/hyperaudio-lite.mjs",
+    "js/hyperaudio-lite.d.ts"
+  ],
   "devDependencies": {
     "jest": "^29.7.0",
     "jest-environment-jsdom": "^29.7.0"
   },
   "scripts": {
-    "test": "jest"
+    "test": "jest",
+    "build": "node scripts/build-mjs.js",
+    "prepublishOnly": "npm run build && npm test"
   }
 }

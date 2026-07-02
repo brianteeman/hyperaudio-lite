@@ -1036,5 +1036,5 @@ if (typeof module !== 'undefined' && module.exports) {
   module.exports = { HyperaudioLite, hyperaudioPlayerOptions, BasePlayer };
 }
 
-// ESM export
+// ESM export (this file is generated from hyperaudio-lite.js — edit that file, then `npm run build`)
 export { HyperaudioLite, hyperaudioPlayerOptions, BasePlayer };
