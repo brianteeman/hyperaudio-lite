@@ -1,3 +1,45 @@
+# Version 2.6.0
+
+Bug-fix and API release. Six shipped bugs fixed — including a 2.5.0 regression that broke click-to-play on three players — plus teardown, extensibility and accessibility APIs, a per-tick performance rework, CI, and test coverage for `caption.js`.
+
+## Fixed
+
+- **Play/pause restored on SoundCloud, Video.js and Vimeo** (#245). The abstract-`BasePlayer` change in 2.5.0 removed the HTML5-default `play()`/`pause()` without giving these three subclasses their own, so clicking a word (with the default `playOnClick: true`) threw `play must be implemented by subclasses`. A contract test now verifies every registered player class overrides both.
+- **Share-link autoscroll fires on load** (#246). `setupInitialPlayHead()` ran while `autoscroll` was still `false` (the real option value was applied afterwards), so opening a `#transcript=start,end` link highlighted the selection but never scrolled to it.
+- **Vimeo binds to its own iframe** (#247). `VimeoPlayer` used `document.querySelector('iframe')` — the first iframe anywhere on the page — instead of the instance's own element.
+- **Popover copy button no longer stacks listeners** (#248). Every text selection added another click listener, so one click copied to the clipboard and reopened the dialog once per prior selection.
+- **Selections stop at fractional end times** (#249). `checkStatus()` compared `parseInt`-truncated seconds, overshooting a shared selection's end by up to a second.
+- **Spotify: no NaN before first update; real pause** (#250). `getTime()` resolved `undefined` until the first `playback_update`; `pause()` used `togglePlay()`, which starts playback when state is out of sync.
+- **caption.js: trailing segment no longer dropped** (#258). A transcript ending mid-sentence silently lost its final words — the segment loop only pushed on sentence delimiters.
+
+## New
+
+- **`destroy()`** (#252). Removes every DOM listener the instance added (via an internal `AbortController`), stops the playback polling loop and cancels any in-flight scroll animation. For SPAs that mount/unmount transcripts.
+- **`HyperaudioLite.registerPlayer(type, class)`** (#253). Register custom player adapters for a `data-player-type` value without forking; `BasePlayer` is exported to extend. Unknown player types now warn with the list of valid types instead of throwing a raw `TypeError`.
+- **`scrollContainer` option** (#254). The element that scrolls to follow playback — an element or element id, defaulting to the transcript as before. Pass `document.scrollingElement` for page-scroll layouts.
+- **Keyboard playhead control** (#259). <kbd>Enter</kbd>/<kbd>Space</kbd> on a focused word behaves like a click (add `tabindex` to word elements to make them focusable). Autoscroll respects `prefers-reduced-motion: reduce` by jumping instead of animating.
+
+## Performance
+
+- **Delta class updates** (#251). `updateTranscriptVisualState` no longer rewrites every word's classes and clears every paragraph on each playback tick — only the words that crossed the read/unread boundary are touched (with a self-healing full resync if outside code rewrites the classes), the active word/paragraph are tracked as element references, and `minimizedMode` reuses the already-computed word index. O(words moved) instead of O(transcript length).
+
+## Internal
+
+- **`js/hyperaudio-lite.mjs` is now generated** from `js/hyperaudio-lite.js` via `npm run build` (#256) so the two distributions can't drift; CI verifies it.
+- **package.json fixed for npm** (#256): lowercase name, `description`/`repository`/`keywords`, `files` (tarballs no longer ship demos/media), and hand-written TypeScript declarations (`js/hyperaudio-lite.d.ts`) wired into `exports`.
+- **CI** (#257): GitHub Actions runs jest and the generated-build check on pushes and PRs.
+- **caption.js test coverage** (#258): 11 tests over segmentation, line splitting, orphan fold-back, timing safeguards, VTT/SRT serialisation and `data-d` fallbacks. `caption.js` also moved from `innerText` to `textContent` (identical for plain transcript spans, no layout pass) and gained a CommonJS export guard. This closes long-standing #114.
+- **Hygiene** (#255): removed a leftover debug `console.log` and dead code; the clipboard dialog uses `textContent` so selected text can't parse as HTML.
+
+## Migration
+
+- **No required changes.** All new options and methods are additive; defaults are unchanged.
+- If you maintain a custom player adapter, note that unknown `data-player-type` values now return `null` (with a console warning) instead of throwing — register your adapter with `HyperaudioLite.registerPlayer()`.
+
+# Version 2.5.2
+
+Patch release: `caption.js` no longer lets a `loadedmetadata` listener persist with a stale caption set (#244).
+
 # Version 2.5.1
 
 Patch release. Focused on the demo wrapper's search behaviour plus a polish pass on the example pages.
