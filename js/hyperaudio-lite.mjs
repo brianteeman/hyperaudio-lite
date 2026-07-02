@@ -20,9 +20,10 @@ class BasePlayer {
 
   // Method to attach common event listeners
   attachEventListeners(instance) {
-    this.player.addEventListener('pause', instance.pausePlayHead.bind(instance), false);
-    this.player.addEventListener('play', instance.preparePlayHead.bind(instance), false);
-    this.player.addEventListener('seeked', instance.handleSeeked.bind(instance), false);
+    const opts = { signal: instance.listenerController.signal };
+    this.player.addEventListener('pause', instance.pausePlayHead.bind(instance), opts);
+    this.player.addEventListener('play', instance.preparePlayHead.bind(instance), opts);
+    this.player.addEventListener('seeked', instance.handleSeeked.bind(instance), opts);
   }
 
   // Contract methods — subclasses must implement these for their player's API.
@@ -385,6 +386,9 @@ class HyperaudioLite {
     }
 
     this.transcript = document.getElementById(opts.transcript);
+    // Every DOM listener this instance adds is registered against this
+    // signal, so destroy() can remove them all in one call.
+    this.listenerController = new AbortController();
     this.init(opts.player, opts.minimizedMode, opts.autoScroll, opts.doubleClick, opts.webMonetization, opts.playOnClick);
     // scrollOffset is read directly by scrollToParagraph; consumers can also
     // set/change it on the instance after construction (e.g. for layouts that
@@ -446,6 +450,7 @@ class HyperaudioLite {
     if (typeof popover !== 'undefined') {
       // Current selection, shared with the one-time button listener below.
       this.selectionText = '';
+      const listenerOpts = { signal: this.listenerController.signal };
 
       this.transcript.addEventListener('mouseup', () => {
         const selection = window.getSelection();
@@ -468,7 +473,7 @@ class HyperaudioLite {
         } else {
           popover.style.display = 'none';
         }
-      });
+      }, listenerOpts);
 
       // Attach the copy/confirm listeners ONCE. Adding them inside the
       // mouseup handler stacked a new listener per selection, so a single
@@ -486,12 +491,12 @@ class HyperaudioLite {
 
         e.preventDefault();
         return false;
-      });
+      }, listenerOpts);
 
       const confirmButton = document.getElementById("clipboard-confirm");
       confirmButton.addEventListener("click", () => {
         document.getElementById("clipboard-dialog").close();
-      });
+      }, listenerOpts);
     }
   }
 
@@ -547,8 +552,9 @@ class HyperaudioLite {
     this.start = null;
 
     const playHeadEvent = doubleClick ? 'dblclick' : 'click';
-    this.transcript.addEventListener(playHeadEvent, this.setPlayHead.bind(this), false);
-    this.transcript.addEventListener(playHeadEvent, this.checkPlayHead.bind(this), false);
+    const opts = { signal: this.listenerController.signal };
+    this.transcript.addEventListener(playHeadEvent, this.setPlayHead.bind(this), opts);
+    this.transcript.addEventListener(playHeadEvent, this.checkPlayHead.bind(this), opts);
   }
 
   // Setup initial playhead position based on URL hash
@@ -736,6 +742,21 @@ class HyperaudioLite {
     this.autoscroll = true;
   }
 
+  // Tear down the instance: stop the polling loop, cancel any in-flight
+  // scroll animation and remove every DOM listener this instance added
+  // (transcript, native player, popover). Embed players (YouTube, Vimeo,
+  // SoundCloud, Spotify) keep their own internal API listeners — discard
+  // the instance after calling destroy().
+  destroy() {
+    this.destroyed = true;
+    this.clearTimer();
+    if (this.scrollAnimationId) {
+      cancelAnimationFrame(this.scrollAnimationId);
+      this.scrollAnimationId = null;
+    }
+    this.listenerController.abort();
+  }
+
   // Check the playhead position and update the transcript
   checkPlayHead() {
     this.clearTimer();
@@ -800,6 +821,12 @@ class HyperaudioLite {
 
   // Check the status of the playhead and update the transcript
   checkStatus() {
+    // An in-flight async checkPlayHead can land after destroy() — don't
+    // re-arm the polling loop on a torn-down instance.
+    if (this.destroyed) {
+      return;
+    }
+
     if (!this.myPlayer.paused) {
       // parseFloat: end and currentTime are fractional seconds — truncating
       // them let playback overshoot a shared selection by up to 1s (#249).

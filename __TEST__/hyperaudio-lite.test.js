@@ -573,6 +573,30 @@ test("popover copy button copies once per click (regression for #248)", () => {
   window.location.hash = "";
 });
 
+test("destroy() detaches listeners and stops the polling loop (#252)", () => {
+  // Re-parsing the body drops every listener added by instances from earlier
+  // tests, so only the instance under test is attached to the transcript.
+  document.body.innerHTML = document.body.innerHTML;
+
+  const inst = new HyperaudioLite({
+    transcript: "hypertranscript",
+    player: "hyperplayer",
+  });
+  const player = document.getElementById("hyperplayer");
+
+  // Sanity: listeners are live before destroy.
+  simulateClick(document.getElementsByTagName("span")[3], "click");
+  expect(player.currentTime).toBe(3.95);
+
+  inst.destroy();
+
+  expect(inst.timer).toBeFalsy(); // polling loop stopped
+
+  player.currentTime = 0;
+  simulateClick(document.getElementsByTagName("span")[4], "click");
+  expect(player.currentTime).toBe(0); // click listener removed — no seek
+});
+
 
 
 
