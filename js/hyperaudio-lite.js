@@ -387,6 +387,7 @@ class HyperaudioLite {
         webMonetization: false,
         playOnClick: true,
         scrollOffset: 0,
+        scrollContainer: null,
         ...args[0],
       };
     } else {
@@ -401,7 +402,7 @@ class HyperaudioLite {
     // Every DOM listener this instance adds is registered against this
     // signal, so destroy() can remove them all in one call.
     this.listenerController = new AbortController();
-    this.init(opts.player, opts.minimizedMode, opts.autoScroll, opts.doubleClick, opts.webMonetization, opts.playOnClick);
+    this.init(opts.player, opts.minimizedMode, opts.autoScroll, opts.doubleClick, opts.webMonetization, opts.playOnClick, opts.scrollContainer);
     // scrollOffset is read directly by scrollToParagraph; consumers can also
     // set/change it on the instance after construction (e.g. for layouts that
     // resize their sticky header).
@@ -439,13 +440,13 @@ class HyperaudioLite {
   }
 
   // Initialize the HyperaudioLite instance
-  init(mediaElementId, minimizedMode, autoscroll, doubleClick, webMonetization, playOnClick) {
+  init(mediaElementId, minimizedMode, autoscroll, doubleClick, webMonetization, playOnClick, scrollContainer) {
     this.setupTranscriptHash();
     this.setupPopover();
     this.setupPlayer(mediaElementId);
     this.setupTranscriptWords();
     this.setupEventListeners(doubleClick, playOnClick);
-    this.setupAutoScroll(autoscroll);
+    this.setupAutoScroll(autoscroll, scrollContainer);
     this.minimizedMode = minimizedMode;
     this.webMonetization = webMonetization;
     // Must run AFTER setupAutoScroll: a share-link hash scrolls the selection
@@ -556,9 +557,18 @@ class HyperaudioLite {
     this.parentElements = this.transcript.getElementsByTagName(this.parentTag);
   }
 
-  setupAutoScroll(autoscroll) {
+  setupAutoScroll(autoscroll, scrollContainer) {
     this.autoscroll = autoscroll;
-    this.scrollContainer = this.transcript;
+    // scrollContainer option: an element or an element id (#254). Defaults to
+    // the transcript element itself. For layouts where the page scrolls
+    // rather than the transcript, pass document.scrollingElement.
+    if (typeof scrollContainer === 'string') {
+      this.scrollContainer = document.getElementById(scrollContainer) || this.transcript;
+    } else if (scrollContainer) {
+      this.scrollContainer = scrollContainer;
+    } else {
+      this.scrollContainer = this.transcript;
+    }
   }
 
   // Setup event listeners for interactions

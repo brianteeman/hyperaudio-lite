@@ -597,6 +597,35 @@ test("destroy() detaches listeners and stops the polling loop (#252)", () => {
   expect(player.currentTime).toBe(0); // click listener removed — no seek
 });
 
+test("scrollContainer defaults to the transcript element (#254)", () => {
+  const inst = new HyperaudioLite({
+    transcript: "hypertranscript",
+    player: "hyperplayer",
+  });
+  expect(inst.scrollContainer).toBe(inst.transcript);
+});
+
+test("scrollContainer accepts an element id (#254)", () => {
+  document.body.insertAdjacentHTML("beforeend", '<div id="scroller"></div>');
+  const inst = new HyperaudioLite({
+    transcript: "hypertranscript",
+    player: "hyperplayer",
+    scrollContainer: "scroller",
+  });
+  expect(inst.scrollContainer).toBe(document.getElementById("scroller"));
+  document.getElementById("scroller").remove();
+});
+
+test("scrollContainer accepts an element (#254)", () => {
+  const el = document.createElement("div");
+  const inst = new HyperaudioLite({
+    transcript: "hypertranscript",
+    player: "hyperplayer",
+    scrollContainer: el,
+  });
+  expect(inst.scrollContainer).toBe(el);
+});
+
 test("unknown data-player-type warns instead of throwing (#253)", () => {
   const warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
   document.body.insertAdjacentHTML(
