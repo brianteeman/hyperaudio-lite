@@ -270,6 +270,10 @@ class YouTubePlayer extends BasePlayer {
 class SpotifyPlayer extends BasePlayer {
   // Initialize the Spotify player by setting up the Spotify IFrame API
   initPlayer(instance) {
+    // Known position before the first playback_update arrives — getTime()
+    // used to resolve undefined and propagate NaN downstream (#250).
+    this.currentTime = 0;
+
     window.onSpotifyIframeApiReady = IFrameAPI => {
       const element = document.getElementById(instance.player.id);
       const srcValue = element.getAttribute('src');
@@ -323,7 +327,13 @@ class SpotifyPlayer extends BasePlayer {
 
   // Pause the Spotify track
   pause() {
-    this.player.togglePlay();
+    // Prefer the controller's real pause — togglePlay() STARTED playback
+    // whenever internal state was out of sync with the widget (#250).
+    if (typeof this.player.pause === 'function') {
+      this.player.pause();
+    } else {
+      this.player.togglePlay();
+    }
     this.paused = true;
   }
 }
